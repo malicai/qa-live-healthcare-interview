@@ -1,29 +1,42 @@
 <template>
   <div class="home">
+    <div class="page-toolbar">
+      <a-dropdown placement="bottomRight">
+        <a-button>
+          <GlobalOutlined />
+          {{ currentLocaleLabel }}
+          <DownOutlined />
+        </a-button>
+        <template #overlay>
+          <a-menu :selectedKeys="[locale]" @click="handleLocaleChange">
+            <a-menu-item v-for="option in localeOptions" :key="option.value">
+              {{ option.label }}
+            </a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
+    </div>
+
     <section class="hero">
       <div class="hero-content">
-        <h1>专业在线医疗问诊平台</h1>
-        <p class="hero-subtitle">连接专业医生与患者,提供便捷、高效的医疗咨询服务</p>
+        <h1>{{ t.home.hero.title }}</h1>
+        <p class="hero-subtitle">{{ t.home.hero.subtitle }}</p>
         <div class="hero-features">
-          <div class="feature-item">
+          <div
+            v-for="feature in t.home.hero.features"
+            :key="feature"
+            class="feature-item"
+          >
             <CheckCircleOutlined class="feature-icon" />
-            <span>专业医生团队</span>
-          </div>
-          <div class="feature-item">
-            <CheckCircleOutlined class="feature-icon" />
-            <span>实时在线问诊</span>
-          </div>
-          <div class="feature-item">
-            <CheckCircleOutlined class="feature-icon" />
-            <span>隐私安全保护</span>
+            <span>{{ feature }}</span>
           </div>
         </div>
         <div class="hero-actions">
           <a-button type="primary" size="large" @click="navigateTo('/consultation')">
-            立即问诊
+            {{ t.home.hero.startConsultation }}
           </a-button>
           <a-button size="large" @click="navigateTo('/doctors')">
-            查看医生
+            {{ t.home.hero.viewDoctors }}
           </a-button>
         </div>
       </div>
@@ -39,7 +52,7 @@
         </div>
         <div class="stat-info">
           <h3>{{ statistics.totalDoctors }}</h3>
-          <p>专业医生</p>
+          <p>{{ t.home.statistics.doctors }}</p>
         </div>
       </div>
       <div class="stat-card">
@@ -48,7 +61,7 @@
         </div>
         <div class="stat-info">
           <h3>{{ statistics.totalQuestions }}</h3>
-          <p>问题总数</p>
+          <p>{{ t.home.statistics.questions }}</p>
         </div>
       </div>
       <div class="stat-card">
@@ -57,7 +70,7 @@
         </div>
         <div class="stat-info">
           <h3>{{ statistics.activeSessions }}</h3>
-          <p>待响应问题</p>
+          <p>{{ t.home.statistics.pending }}</p>
         </div>
       </div>
       <div class="stat-card">
@@ -66,24 +79,24 @@
         </div>
         <div class="stat-info">
           <h3>{{ statistics.totalSessions }}</h3>
-          <p>在线诊室</p>
+          <p>{{ t.home.statistics.rooms }}</p>
         </div>
       </div>
     </section>
 
     <section class="active-rooms">
-      <h2>开放诊室</h2>
-      <p class="section-subtitle">以下医生诊室正在开放,欢迎咨询</p>
+      <h2>{{ t.home.activeRooms.title }}</h2>
+      <p class="section-subtitle">{{ t.home.activeRooms.subtitle }}</p>
       <div class="rooms-grid">
         <div
-          v-for="doctor in activeDoctors"
+          v-for="doctor in displayedDoctors"
           :key="doctor.id"
           class="room-card"
           @click="navigateTo(`/consultation/${doctor.username}`)"
         >
           <div class="room-header">
             <img :src="doctor.avatar" :alt="doctor.name" class="doctor-avatar" />
-            <a-badge status="processing" text="在线" />
+            <a-badge status="processing" :text="t.home.activeRooms.online" />
           </div>
           <div class="room-body">
             <h3>{{ doctor.name }}</h3>
@@ -96,7 +109,7 @@
             </div>
           </div>
           <div class="room-footer">
-            <a-button type="primary" block>进入诊室</a-button>
+            <a-button type="primary" block>{{ t.home.activeRooms.enterRoom }}</a-button>
           </div>
         </div>
       </div>
@@ -108,20 +121,71 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { store } from '../store';
+import type { Doctor } from '../store';
 import {
   CheckCircleOutlined,
   TeamOutlined,
   FileTextOutlined,
   ClockCircleOutlined,
-  UserOutlined
+  UserOutlined,
+  GlobalOutlined,
+  DownOutlined
 } from '@ant-design/icons-vue';
+import { localeOptions, messages } from '../locales';
 
 const router = useRouter();
+
+const locale = computed(() => store.state.locale);
+const t = computed(() => messages[locale.value]);
+const currentLocaleLabel = computed(
+  () => localeOptions.find(option => option.value === locale.value)?.label ?? ''
+);
+
+const handleLocaleChange = (info: { key: string | number }): void => {
+  if (info.key === 'zh-CN' || info.key === 'en-US') {
+    store.setLocale(info.key);
+  }
+};
 
 const statistics = computed(() => store.getStatistics());
 const activeDoctors = computed(() => store.getActiveDoctors());
 
-const navigateTo = (path: string) => {
+interface DoctorDisplay {
+  name: string;
+  title: string;
+  department: string;
+  experience: string;
+  specialties: string[];
+}
+
+const getDoctorDisplay = (doctor: Doctor): DoctorDisplay => {
+  if (locale.value === 'en-US') {
+    return {
+      name: doctor.nameEn,
+      title: doctor.titleEn,
+      department: doctor.departmentEn,
+      experience: doctor.experienceEn,
+      specialties: doctor.specialtiesEn,
+    };
+  }
+
+  return {
+    name: doctor.name,
+    title: doctor.title,
+    department: doctor.department,
+    experience: doctor.experience,
+    specialties: doctor.specialties,
+  };
+};
+
+const displayedDoctors = computed(() =>
+  activeDoctors.value.map(doctor => ({
+    ...doctor,
+    ...getDoctorDisplay(doctor),
+  }))
+);
+
+const navigateTo = (path: string): void => {
   router.push(path);
 };
 </script>
@@ -129,6 +193,14 @@ const navigateTo = (path: string) => {
 <style scoped>
 .home {
   padding-top: 64px;
+}
+
+.page-toolbar {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .hero {

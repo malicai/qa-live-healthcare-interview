@@ -5,7 +5,19 @@
       <p>我们的专业医疗团队随时为您服务</p>
     </div>
 
-    <div class="doctors-container">
+    <div v-if="loading" class="state-container">
+      <a-spin size="large" />
+    </div>
+
+    <a-alert
+      v-else-if="error"
+      class="error-alert"
+      type="error"
+      :message="error"
+      show-icon
+    />
+
+    <div v-else class="doctors-container">
       <div class="doctors-grid">
         <a-card
           v-for="doctor in allDoctors"
@@ -55,6 +67,8 @@ import { store, Doctor } from '../store';
 const router = useRouter();
 
 const allDoctors = computed(() => store.state.doctors);
+const loading = computed(() => store.state.doctorsLoading);
+const error = computed(() => store.state.doctorsError);
 
 const goToConsultation = (doctor: Doctor) => {
   router.push(`/consultation/${doctor.username}`);
@@ -92,6 +106,17 @@ const goToConsultation = (doctor: Doctor) => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 48px 24px;
+}
+
+.state-container {
+  display: flex;
+  justify-content: center;
+  padding: 120px 24px;
+}
+
+.error-alert {
+  max-width: 1200px;
+  margin: 48px auto;
 }
 
 .doctors-grid {

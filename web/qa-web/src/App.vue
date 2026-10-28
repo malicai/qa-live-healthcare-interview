@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import { RouterView } from 'vue-router';
 import AppHeader from './components/AppHeader.vue';
 import AppFooter from './components/AppFooter.vue';
+import { store } from './store';
+
+onMounted(() => {
+  store.loadDoctors().catch(() => {
+    // 错误信息已记录在 store.doctorsError，由页面展示
+  });
+});
 </script>
 
 <template>

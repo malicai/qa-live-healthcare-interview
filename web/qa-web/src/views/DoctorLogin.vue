@@ -74,11 +74,11 @@ const rules = {
   password: [{ required: true, message: '请输入密码' }],
 };
 
-const onFinish = async () => {
+const onFinish = async (): Promise<void> => {
   loading.value = true;
 
-  setTimeout(() => {
-    const doctor = store.loginDoctor(formState.username, formState.password);
+  try {
+    const doctor = await store.loginDoctor(formState.username, formState.password);
 
     if (doctor) {
       message.success('登录成功');
@@ -86,9 +86,11 @@ const onFinish = async () => {
     } else {
       message.error('用户名或密码错误');
     }
-
+  } catch {
+    message.error('登录失败,请稍后重试');
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 };
 </script>
 

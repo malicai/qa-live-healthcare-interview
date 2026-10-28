@@ -1,23 +1,34 @@
 import { reactive } from 'vue';
-import doctorData from '../data/doctor-user-list.json';
-import patientData from '../data/patient-user.json';
+import type { Locale } from '../locales';
+import { fetchDoctors, loginDoctor as loginDoctorApi } from '../api/doctors';
+import {
+  loginPatient as loginPatientApi,
+  registerPatient as registerPatientApi
+} from '../api/patients';
+import type { PatientRegisterPayload } from '../api/patients';
+import { ApiError } from '../api/http';
 import questionData from '../data/question-list.json';
 
 export interface Doctor {
   id: string;
   username: string;
-  password: string;
   name: string;
+  nameEn: string;
   title: string;
+  titleEn: string;
   department: string;
+  departmentEn: string;
   avatar: string;
   experience: string;
+  experienceEn: string;
   specialties: string[];
+  specialtiesEn: string[];
   isActive: boolean;
 }
 
 export interface Patient {
   id: string;
+  username: string;
   name: string;
   birthday: string;
   phone: string;
@@ -39,54 +50,71 @@ export interface Question {
 
 interface State {
   doctors: Doctor[];
-  patients: Patient[];
+  doctorsLoading: boolean;
+  doctorsError: string | null;
   questions: Question[];
   currentDoctor: Doctor | null;
   currentPatient: Patient | null;
+  locale: Locale;
 }
 
 const state = reactive<State>({
-  doctors: doctorData as Doctor[],
-  patients: patientData as Patient[],
+  doctors: [],
+  doctorsLoading: false,
+  doctorsError: null,
   questions: questionData as Question[],
   currentDoctor: null,
   currentPatient: null,
+  locale: 'zh-CN',
 });
 
 export const store = {
   state,
 
-  loginDoctor(username: string, password: string): Doctor | null {
-    const doctor = state.doctors.find(
-      d => d.username === username && d.password === password
-    );
-    if (doctor) {
+  setLocale(locale: Locale): void {
+    state.locale = locale;
+  },
+
+  async loadDoctors(): Promise<void> {
+    state.doctorsLoading = true;
+    state.doctorsError = null;
+
+    try {
+      const page = await fetchDoctors({ page: 1, size: 100 });
+      state.doctors = page.items;
+    } catch (error) {
+      state.doctorsError = error instanceof Error ? error.message : '医生数据加载失败';
+      throw error;
+    } finally {
+      state.doctorsLoading = false;
+    }
+  },
+
+  async loginDoctor(username: string, password: string): Promise<Doctor | null> {
+    try {
+      const { doctor } = await loginDoctorApi(username, password);
       state.currentDoctor = doctor;
       return doctor;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        return null;
+      }
+      throw error;
     }
-    return null;
   },
 
   logoutDoctor() {
     state.currentDoctor = null;
   },
 
-  verifyPatient(name: string, birthday: string): Patient {
-    let patient = state.patients.find(
-      p => p.name === name && p.birthday === birthday
-    );
+  async loginPatient(username: string, password: string): Promise<Patient> {
+    const { patient } = await loginPatientApi(username, password);
+    state.currentPatient = patient;
+    return patient;
+  },
 
-    if (!patient) {
-      patient = {
-        id: `patient${Date.now()}`,
-        name,
-        birthday,
-        phone: '',
-        gender: '',
-      };
-      state.patients.push(patient);
-    }
-
+  async registerPatient(payload: PatientRegisterPayload): Promise<Patient> {
+    const { patient } = await registerPatientApi(payload);
     state.currentPatient = patient;
     return patient;
   },
